@@ -19,6 +19,8 @@ namespace ForgetDB.Client
 
 		private string Topic;
 
+		private static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+
 		public ForgetClient(string serverIp, string groupId)
 		{
 			GroupId = groupId;
@@ -28,10 +30,10 @@ namespace ForgetDB.Client
 
 		private byte[] Peer_OnReceiveEvent(byte[] data)
 		{
-			var packet = LZ4MessagePackSerializer.Deserialize<Packet>(data);
+			var packet = MessagePackSerializer.Deserialize<Packet>(data, lz4Options);
 			if (packet.Value != null)
 			{
-				itemQueue.Enqueue(LZ4MessagePackSerializer.Deserialize<T>(packet.Value));
+				itemQueue.Enqueue(MessagePackSerializer.Deserialize<T>(packet.Value, lz4Options));
 				hasNewItem.Set();
 			}
 			return null;
@@ -39,27 +41,27 @@ namespace ForgetDB.Client
 
 		public void Produce(string key, T value, long expireAt = long.MaxValue)
 		{
-			byte[] packet = LZ4MessagePackSerializer.Serialize(new Packet
+			byte[] packet = MessagePackSerializer.Serialize(new Packet
 			{
 				Command = "PUSH",
 				Key = key,
-				Value = LZ4MessagePackSerializer.Serialize(value),
+				Value = MessagePackSerializer.Serialize(value, lz4Options),
 				ExpireAt = expireAt
-			});
+			}, lz4Options);
 
 			peer.Send(packet);
 		}
 
 		public T Consume(string key, Seek pos = Seek.Earliest, long step = 1)
 		{
-			byte[] packet = LZ4MessagePackSerializer.Serialize(new Packet
+			byte[] packet = MessagePackSerializer.Serialize(new Packet
 			{
 				Command = "PULL",
 				Key = key,
 				GroupId = GroupId,
 				Position = pos,
 				Step = step
-			});
+			}, lz4Options);
 
 			while (itemQueue.IsEmpty)
 			{

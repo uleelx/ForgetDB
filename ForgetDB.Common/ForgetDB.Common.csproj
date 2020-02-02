@@ -5,9 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="1.7.3.7" />
-    <PackageReference Include="MessagePackAnalyzer" Version="1.7.3.7" />
-    <PackageReference Include="NetMQ" Version="4.0.0.1" />
+    <PackageReference Include="MessagePack" Version="2.1.80" />
+    <PackageReference Include="MessagePackAnalyzer" Version="2.1.80" />
+    <PackageReference Include="NetMQ" Version="4.0.0.207" />
   </ItemGroup>
 
 </Project>

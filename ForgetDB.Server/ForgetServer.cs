@@ -14,17 +14,19 @@ namespace ForgetDB.Server
 		private static double pushElapsedTime = 0;
 		private static double pullElapsedTime = 0;
 
+		private static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+
 		public ForgetServer(int port, string dataBaseDir = "./db")
 		{
-			db = new DBreezeImp(dataBaseDir);
+			db = new LiteDBImp(dataBaseDir);
 			peer = new NetMQPeer(port);
 			peer.OnReceiveEvent += Peer_OnReceiveEvent;
 		}
-		
+
 		private static byte[] Peer_OnReceiveEvent(byte[] data)
 		{
 			DateTime a = DateTime.Now;
-			var packet = LZ4MessagePackSerializer.Deserialize<Packet>(data);
+			var packet = MessagePackSerializer.Deserialize<Packet>(data, lz4Options);
 			byte[] response = null;
 			switch (packet.Command)
 			{
@@ -32,12 +34,12 @@ namespace ForgetDB.Server
 					pushCount += 1;
 					//Console.Write($"PUSH{pushCount}\t");
 					db.Push(packet.Key, packet.Value, packet.ExpireAt);
-					response = LZ4MessagePackSerializer.Serialize(new Packet
+					response = MessagePackSerializer.Serialize(new Packet
 					{
 						Command = "PUSH",
 						Key = packet.Key,
 						Value = null
-					});
+					}, lz4Options);
 					pushElapsedTime += DateTime.Now.Subtract(a).TotalSeconds;
 					Console.WriteLine($"PUSH {pushElapsedTime}");
 					break;
@@ -45,12 +47,12 @@ namespace ForgetDB.Server
 					pullCount += 1;
 					//Console.Write($"PULL{pullCount}\t");
 					byte[] value = db.Pull(packet.Key, packet.GroupId);
-					response = LZ4MessagePackSerializer.Serialize(new Packet
+					response = MessagePackSerializer.Serialize(new Packet
 					{
 						Command = "PULL",
 						Key = packet.Key,
 						Value = value
-					});
+					}, lz4Options);
 					pullElapsedTime += DateTime.Now.Subtract(a).TotalSeconds;
 					Console.WriteLine($"PULL {pullElapsedTime}");
 					break;
